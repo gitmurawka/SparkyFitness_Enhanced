@@ -4172,6 +4172,16 @@
       "targetGoal": "Target Daily Goal",
       "averageVsTarget": "Average vs. Target",
       "percentOfGoal": "{{percent}}% of goal"
+    },
+    "foodSources": {
+      "title": "Food Sources",
+      "subtitle": "Share of total {{nutrient}} in this period",
+      "loadFailed": "Failed to load food sources",
+      "empty": "No logged foods contributed {{nutrient}} in this period.",
+      "unnamedFood": "Unnamed food",
+      "other": "Other",
+      "otherCount_one": "{{count}} more food",
+      "otherCount_other": "{{count}} more foods"
     }
   },
   "workoutPresetDetail": {

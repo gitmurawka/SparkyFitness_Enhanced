@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DailyNutritionDetailsScreen from '../../src/screens/DailyNutritionDetailsScreen';
 import { useDailySummary } from '../../src/hooks/useDailySummary';
@@ -125,6 +125,42 @@ describe('DailyNutritionDetailsScreen fiber row', () => {
     ).toBeTruthy();
     // The food-only figure must not appear: that was the disagreement.
     expect(screen.queryByText(`${FOOD_FIBER}g / 30g`)).toBeNull();
+  });
+});
+
+describe('DailyNutritionDetailsScreen macro rows', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseDailySummary.mockReturnValue(summaryWithSupplementFiber());
+  });
+
+  it.each([
+    ['protein', 'Protein', 150],
+    ['carbs', 'Carbs', 200],
+    ['fat', 'Fat', 60],
+  ])('opens the %s trends from the top card', (key, label, goal) => {
+    render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <DailyNutritionDetailsScreen
+          navigation={mockNavigation}
+          route={route}
+        />
+      </SafeAreaProvider>
+    );
+
+    fireEvent.press(screen.getByTestId(`macro-row-${key}`));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('NutrientTrends', {
+      nutrientKey: key,
+      nutrientLabel: label,
+      unit: 'g',
+      goal,
+    });
   });
 });
 

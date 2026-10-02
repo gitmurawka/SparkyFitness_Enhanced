@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import MacroCompositionRing from './MacroCompositionRing';
 import ProgressRing from './ProgressRing';
+import Icon from './Icon';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import { formatLocalizedNumber } from '../localization';
+
+export type MacroKey = 'protein' | 'carbs' | 'fat';
 
 export interface NutritionGoalPercentages {
   calories?: number | null;
@@ -33,6 +36,8 @@ interface NutritionMacroCardProps {
   proteinGoal?: number;
   carbsGoal?: number;
   fatGoal?: number;
+  // When set, each macro row becomes tappable (e.g. to open its trends).
+  onMacroPress?: (key: MacroKey) => void;
 }
 
 const RING_SIZE = 130;
@@ -52,6 +57,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   proteinGoal,
   carbsGoal,
   fatGoal,
+  onMacroPress,
 }) => {
   const [proteinColor, carbsColor, fatColor, trackColor, accentColor] =
     useCSSVariable([
@@ -83,7 +89,14 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
         }
       : { protein: 0, carbs: 0, fat: 0 };
 
-  const macros = [
+  const macros: {
+    key: MacroKey;
+    label: string;
+    value: number;
+    color: string;
+    goalPercent?: number | null;
+    goal?: number;
+  }[] = [
     {
       key: 'protein',
       label: localizeNutrientKey(t, 'protein'),
@@ -119,6 +132,35 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
         goalPercentages.protein != null ||
         goalPercentages.carbs != null ||
         goalPercentages.fat != null));
+
+  // Rows stay plain Views unless a press handler is given, so screens that only
+  // display nutrition (per-food, logged meal) keep their current behavior.
+  const renderMacroRow = (
+    macro: (typeof macros)[number],
+    className: string | undefined,
+    children: React.ReactNode
+  ) =>
+    onMacroPress ? (
+      <TouchableOpacity
+        key={macro.key}
+        className={className}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={macro.label}
+        testID={`macro-row-${macro.key}`}
+        onPress={() => onMacroPress(macro.key)}
+      >
+        {children}
+      </TouchableOpacity>
+    ) : (
+      <View key={macro.key} className={className}>
+        {children}
+      </View>
+    );
+
+  const chevron = onMacroPress ? (
+    <Icon name="chevron-forward" size={14} color={trackColor} />
+  ) : null;
 
   return (
     <View className="bg-surface rounded-xl p-4 gap-4">
@@ -193,18 +235,23 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
               const goalPct = macro.goalPercent;
               const fillPct =
                 goalPct != null ? Math.max(0, Math.min(goalPct, 100)) : 0;
-              return (
-                <View key={macro.key}>
-                  <View className="flex-row justify-between mb-1">
+              return renderMacroRow(
+                macro,
+                undefined,
+                <>
+                  <View className="flex-row justify-between items-center mb-1">
                     <Text className="text-text-secondary text-sm">
                       {macro.label}
                     </Text>
-                    <Text className="text-text-primary text-sm font-medium">
-                      {formatLocalizedNumber(Math.round(macro.value))}g
-                      {macro.goal && macro.goal > 0
-                        ? ` / ${formatLocalizedNumber(Math.round(macro.goal))}g`
-                        : ''}
-                    </Text>
+                    <View className="flex-row items-center gap-1">
+                      <Text className="text-text-primary text-sm font-medium">
+                        {formatLocalizedNumber(Math.round(macro.value))}g
+                        {macro.goal && macro.goal > 0
+                          ? ` / ${formatLocalizedNumber(Math.round(macro.goal))}g`
+                          : ''}
+                      </Text>
+                      {chevron}
+                    </View>
                   </View>
                   <View className="h-2 rounded-full bg-progress-track overflow-hidden">
                     {goalPct != null && goalPct > 0 ? (
@@ -244,7 +291,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                         );
                       })()
                     : null}
-                </View>
+                </>
               );
             })}
           </View>
@@ -292,24 +339,29 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
           </View>
 
           <View className="flex-1 gap-3 pl-5">
-            {macros.map((macro) => (
-              <View key={macro.key} className="flex-row items-center gap-2">
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: macro.color,
-                  }}
-                />
-                <Text className="text-text-secondary text-sm flex-1">
-                  {macro.label}
-                </Text>
-                <Text className="text-text-primary text-sm font-medium">
-                  {formatLocalizedNumber(Math.round(macro.value))}g
-                </Text>
-              </View>
-            ))}
+            {macros.map((macro) =>
+              renderMacroRow(
+                macro,
+                'flex-row items-center gap-2',
+                <>
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: macro.color,
+                    }}
+                  />
+                  <Text className="text-text-secondary text-sm flex-1">
+                    {macro.label}
+                  </Text>
+                  <Text className="text-text-primary text-sm font-medium">
+                    {formatLocalizedNumber(Math.round(macro.value))}g
+                  </Text>
+                  {chevron}
+                </>
+              )
+            )}
           </View>
         </View>
       )}

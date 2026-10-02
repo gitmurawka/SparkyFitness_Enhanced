@@ -6,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getAppLocale, formatLocalizedNumber } from '../localization';
 import { useNutritionTrends } from '../hooks/useNutritionTrends';
+import { useNutrientFoodSources } from '../hooks/useNutrientFoodSources';
 import { trendRangeSegments, type TrendRange } from '../utils/trendRange';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import NutrientBarChart from '../components/NutrientBarChart';
+import NutrientFoodSourcesCard from '../components/NutrientFoodSourcesCard';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type NutrientTrendsScreenProps = RootStackScreenProps<'NutrientTrends'>;
@@ -35,6 +37,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
   });
 
   const { data, isLoading, isError } = useNutritionTrends({ range });
+  const foodSources = useNutrientFoodSources({ range, nutrientKey });
 
   // Map historical trend data to extract values for this specific nutrient
   const chartData = useMemo(() => {
@@ -52,7 +55,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
   // Compute stats
   const stats = useMemo(() => {
     if (chartData.length === 0) {
-      return { average: 0, peak: 0, peakDay: '' };
+      return { average: 0, peak: 0, peakDay: '', sum: 0 };
     }
 
     const sum = chartData.reduce((acc, point) => acc + point.value, 0);
@@ -67,7 +70,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
       }
     });
 
-    return { average, peak, peakDay };
+    return { average, peak, peakDay, sum };
   }, [chartData]);
 
   const formattedPeakDay = useMemo(() => {
@@ -211,6 +214,17 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
             </>
           ) : null}
         </View>
+
+        {/* Foods this nutrient came from over the selected range */}
+        <NutrientFoodSourcesCard
+          // The chart only sums nutrients the trends report aggregates; when it
+          // has nothing for this range, listing foods would contradict it.
+          breakdown={stats.sum > 0 ? foodSources.breakdown : null}
+          isLoading={foodSources.isLoading}
+          isError={foodSources.isError}
+          nutrientLabel={nutrientLabel}
+          unit={unit}
+        />
       </ScrollView>
     </View>
   );

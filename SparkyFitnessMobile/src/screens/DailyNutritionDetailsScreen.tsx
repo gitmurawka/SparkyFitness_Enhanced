@@ -428,6 +428,15 @@ const DailyNutritionDetailsScreen: React.FC<
           proteinGoal={summary.protein.goal}
           carbsGoal={summary.carbs.goal}
           fatGoal={summary.fat.goal}
+          onMacroPress={(key) => {
+            const goal = summary[key].goal;
+            navigation.navigate('NutrientTrends', {
+              nutrientKey: key,
+              nutrientLabel: getNutrientLabel(t, key),
+              unit: NUTRIENT_META[key]?.unit ?? 'g',
+              goal: goal > 0 ? goal : undefined,
+            });
+          }}
         />
 
         {/* Predefined Nutrients Section */}

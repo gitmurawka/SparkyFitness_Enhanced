@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-09-30_
+_Last updated: 2026-10-02_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -217,6 +217,7 @@ npx expo prebuild --clean
 - `DiaryScreen` owns that day's photo query and passes them down as a prop, the way it already does for measurements. It needs the same answer itself: a photo is something the user recorded, so it defeats `isDayEmpty` exactly as a logged supplement does - the summary lives in the non-empty branch, so a predicate that ignored photos would hide them on the very day they were taken. That arm is gated on the query's load like the sleep arm above it, or a day with photos flashes the empty illustration until they arrive.
 - `PhotoDayWeight` renders the weight under a photo and, when the day has none, a prompt into `MeasurementsAdd` for that date. Used by the gallery, comparison and time-lapse; the Dashboard card keeps plain text because the card is already a touchable.
 - `CalendarSheet` takes an optional `markedDates`; Dashboard and Diary pass the photo days, fetched on first open of the picker rather than at mount (`useCheckInPhotoDates(calendarOpened)`).
+- `DailyNutritionDetailsScreen` opens `NutrientTrendsScreen` from every breakdown row and from the Protein / Carbs / Fat rows of `NutritionMacroCard` (its optional `onMacroPress`; screens that omit it keep plain rows). Below the chart, `NutrientFoodSourcesCard` ranks the foods the nutrient came from over the selected 7d/30d/90d range: `useNutrientFoodSources` reads `GET /api/food-entries/range/:start/:end` and `utils/nutrientFoodSources.ts` scales each entry with the same `value * quantity / serving_size` the trends report sums, so the shares add up to the chart. Meal components are their own entries and count as their foods; foods deleted from the library group by name and brand. The list is withheld when the chart is empty for the range (e.g. `water_ml`, which the trends report does not aggregate) so the two never disagree.
 - Custom nutrients are fetched via `useCustomNutrients` from `GET /api/custom-nutrients`; nutrient display preferences use full-array replace through `preferencesApi.ts`.
 - Nutrient metadata and defaults live in `constants/nutrients.ts`; aggregation and visibility toggling live in `utils/nutrientUtils.ts`.
 - Measurements and water routes are in `measurementsApi.ts`; date-sensitive flows should preserve calendar-day strings and shared timezone helpers.

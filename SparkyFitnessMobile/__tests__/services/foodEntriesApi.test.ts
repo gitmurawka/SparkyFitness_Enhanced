@@ -5,6 +5,7 @@ import {
   copyFoodEntries,
   copyReviewedFoodEntriesFromUser,
   copySelectedFoodEntriesFromUser,
+  fetchFoodEntriesRange,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
@@ -474,6 +475,43 @@ describe('foodEntriesApi', () => {
       await expect(updateFoodEntry('entry-1', testPayload)).rejects.toThrow(
         'Server configuration not found.'
       );
+    });
+  });
+
+  describe('fetchFoodEntriesRange', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('sends GET to /api/food-entries/range/:start/:end', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([{ id: 'entry-1' }]),
+      });
+
+      const result = await fetchFoodEntriesRange('2024-06-01', '2024-06-07');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/range/2024-06-01/2024-06-07',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(result).toEqual([{ id: 'entry-1' }]);
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(
+        fetchFoodEntriesRange('2024-06-01', '2024-06-07')
+      ).rejects.toThrow();
     });
   });
 

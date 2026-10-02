@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import NutritionMacroCard from '../../src/components/NutritionMacroCard';
 
 jest.mock('../../src/components/MacroCompositionRing', () => {
@@ -122,6 +122,51 @@ describe('NutritionMacroCard', () => {
       );
       expect(getByTestId('macro-composition-ring')).toBeTruthy();
       expect(queryByTestId('progress-ring')).toBeNull();
+    });
+  });
+  describe('onMacroPress', () => {
+    it('keeps macro rows non-interactive without a handler', () => {
+      const { queryByTestId } = render(<NutritionMacroCard {...baseProps} />);
+      expect(queryByTestId('macro-row-protein')).toBeNull();
+    });
+
+    it('reports the pressed macro in the composition layout', () => {
+      const onMacroPress = jest.fn();
+      const { getByTestId } = render(
+        <NutritionMacroCard {...baseProps} onMacroPress={onMacroPress} />
+      );
+      fireEvent.press(getByTestId('macro-row-fat'));
+      expect(onMacroPress).toHaveBeenCalledWith('fat');
+    });
+
+    it('reports the pressed macro in the goal layout', () => {
+      const onMacroPress = jest.fn();
+      const { getByTestId } = render(
+        <NutritionMacroCard
+          {...baseProps}
+          goalPercentages={{ protein: 50, carbs: 25, fat: 40 }}
+          proteinGoal={60}
+          onMacroPress={onMacroPress}
+        />
+      );
+      fireEvent.press(getByTestId('macro-row-protein'));
+      fireEvent.press(getByTestId('macro-row-carbs'));
+      expect(onMacroPress.mock.calls).toEqual([['protein'], ['carbs']]);
+    });
+
+    it('reports carbs even when net carbs are displayed', () => {
+      const onMacroPress = jest.fn();
+      const { getByTestId, getByText } = render(
+        <NutritionMacroCard
+          {...baseProps}
+          fiber={10}
+          showNetCarbs
+          onMacroPress={onMacroPress}
+        />
+      );
+      expect(getByText('Net Carbs')).toBeTruthy();
+      fireEvent.press(getByTestId('macro-row-carbs'));
+      expect(onMacroPress).toHaveBeenCalledWith('carbs');
     });
   });
 });

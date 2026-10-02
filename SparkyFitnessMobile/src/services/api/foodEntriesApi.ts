@@ -178,6 +178,23 @@ export const copySelectedFoodEntriesFromUser = async (
 };
 
 /**
+ * Fetches every food entry logged between two inclusive `YYYY-MM-DD` days.
+ * Meal components come back as their own rows (linked by `food_entry_meal_id`).
+ */
+export const fetchFoodEntriesRange = async (
+  startDate: string,
+  endDate: string
+): Promise<FoodEntry[]> => {
+  return apiFetch<FoodEntry[]>({
+    endpoint: `/api/food-entries/range/${encodeURIComponent(
+      startDate
+    )}/${encodeURIComponent(endDate)}`,
+    serviceName: 'Food Entries API',
+    operation: 'fetch food entries range',
+  });
+};
+
+/**
  * Calculates total calories consumed from food entries.
  * Formula: sum((entry.calories * quantity) / serving_size)
  */
