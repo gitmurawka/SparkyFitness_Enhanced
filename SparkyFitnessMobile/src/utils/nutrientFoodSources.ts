@@ -1,5 +1,11 @@
-import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
-import type { FoodVariantNutrientField } from '@workspace/shared';
+import {
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+  resolveSupplementTotals,
+} from '@workspace/shared';
+import type {
+  FoodVariantNutrientField,
+  SupplementTotals,
+} from '@workspace/shared';
 import type { FoodEntry } from '../types/foodEntries';
 
 export interface NutrientFoodSource {
@@ -9,6 +15,8 @@ export interface NutrientFoodSource {
   amount: number;
   /** Share of the range total, 0–100. */
   percent: number;
+  /** The day's logged supplement doses rather than a food. */
+  isSupplements?: boolean;
 }
 
 export interface NutrientFoodSourceBreakdown {
@@ -18,7 +26,20 @@ export interface NutrientFoodSourceBreakdown {
   other: { amount: number; percent: number; foodCount: number } | null;
 }
 
-export const DEFAULT_MAX_FOOD_SOURCES = 5;
+export interface NutrientFoodSourceOptions {
+  /** Foods always listed by name before anything is folded into "Other". */
+  minSources?: number;
+  /** Keep listing foods by name until "Other" holds at most this share. */
+  maxOtherPercent?: number;
+  /**
+   * The nutrient's supplement doses for the period, listed as their own source
+   * so the shares add up to totals that count supplements (the daily summary).
+   */
+  supplementAmount?: number;
+}
+
+const DEFAULT_MIN_FOOD_SOURCES = 5;
+const DEFAULT_MAX_OTHER_PERCENT = 10;
 
 const isFixedNutrient = (key: string): key is FoodVariantNutrientField =>
   (FOOD_VARIANT_NUTRIENT_FIELDS as readonly string[]).includes(key);
@@ -52,6 +73,21 @@ export function getEntryNutrientAmount(
   return (toNumber(rawValue) * toNumber(entry.quantity)) / servingSize;
 }
 
+/**
+ * The amount of one nutrient a day's logged supplement doses carried, from the
+ * daily summary's supplement totals (fixed columns, or `custom_nutrients`).
+ */
+export function getSupplementNutrientAmount(
+  totals: Partial<SupplementTotals> | null | undefined,
+  nutrientKey: string
+): number {
+  const resolved = resolveSupplementTotals(totals);
+  const value = isFixedNutrient(nutrientKey)
+    ? resolved[nutrientKey]
+    : resolved.custom_nutrients[nutrientKey];
+  return toNumber(value);
+}
+
 const sourceKey = (entry: FoodEntry): string => {
   if (entry.food_id) return `food:${entry.food_id}`;
   // Library deletes null out food_id but keep the snapshot name, so fall back
@@ -64,17 +100,27 @@ const sourceKey = (entry: FoodEntry): string => {
 /**
  * Groups diary entries by food and ranks how much each contributed to one
  * nutrient. Meal components are their own entries, so a logged meal is split
- * into the foods it is made of. Foods past `maxSources` are folded into
- * `other`, unless only one would be left, which is then shown by name.
+ * into the foods it is made of. At least `minSources` foods are listed by name,
+ * then more until the rest folded into `other` is at most `maxOtherPercent` of
+ * the total; a single leftover food is shown by name instead of as "Other".
  */
 export function computeNutrientFoodSources(
   entries: FoodEntry[],
   nutrientKey: string,
-  maxSources: number = DEFAULT_MAX_FOOD_SOURCES
+  {
+    minSources = DEFAULT_MIN_FOOD_SOURCES,
+    maxOtherPercent = DEFAULT_MAX_OTHER_PERCENT,
+    supplementAmount = 0,
+  }: NutrientFoodSourceOptions = {}
 ): NutrientFoodSourceBreakdown {
   const groups = new Map<
     string,
-    { foodName: string; brandName?: string; amount: number }
+    {
+      foodName: string;
+      brandName?: string;
+      amount: number;
+      isSupplements?: boolean;
+    }
   >();
 
   for (const entry of entries) {
@@ -94,6 +140,14 @@ export function computeNutrientFoodSources(
     }
   }
 
+  if (supplementAmount > 0) {
+    groups.set('supplements', {
+      foodName: '',
+      amount: supplementAmount,
+      isSupplements: true,
+    });
+  }
+
   const total = Array.from(groups.values()).reduce(
     (sum, group) => sum + group.amount,
     0
@@ -110,8 +164,18 @@ export function computeNutrientFoodSources(
       (a, b) => b.amount - a.amount || a.foodName.localeCompare(b.foodName)
     );
 
-  const visibleCount =
-    ranked.length <= maxSources + 1 ? ranked.length : maxSources;
+  let visibleCount = Math.min(minSources, ranked.length);
+  let restPercent = ranked
+    .slice(visibleCount)
+    .reduce((sum, source) => sum + source.percent, 0);
+  // The small epsilon keeps float drift from the running subtraction from
+  // pulling in one more food when the rest sits exactly on the limit.
+  while (visibleCount < ranked.length && restPercent > maxOtherPercent + 1e-9) {
+    restPercent -= ranked[visibleCount].percent;
+    visibleCount += 1;
+  }
+  if (ranked.length - visibleCount === 1) visibleCount = ranked.length;
+
   const sources = ranked.slice(0, visibleCount);
   const rest = ranked.slice(visibleCount);
 

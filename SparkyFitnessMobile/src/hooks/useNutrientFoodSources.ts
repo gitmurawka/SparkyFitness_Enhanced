@@ -3,26 +3,29 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchFoodEntriesRange } from '../services/api/foodEntriesApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { foodEntriesRangeQueryKey } from './queryKeys';
-import { trendRangeBounds, type TrendRange } from '../utils/trendRange';
 import { computeNutrientFoodSources } from '../utils/nutrientFoodSources';
 
 interface UseNutrientFoodSourcesOptions {
-  range: TrendRange;
+  /** Inclusive `YYYY-MM-DD` bounds; pass the same day twice for one day. */
+  startDate: string;
+  endDate: string;
   nutrientKey: string;
+  /** Supplement doses for the period, listed as their own source. */
+  supplementAmount?: number;
   enabled?: boolean;
 }
 
 /**
- * Ranks the foods a nutrient came from over a trend range, from the same diary
- * entries the nutrition trends are summed from.
+ * Ranks the foods a nutrient came from over a period, from the same diary
+ * entries the nutrition trends and daily totals are summed from.
  */
 export function useNutrientFoodSources({
-  range,
+  startDate,
+  endDate,
   nutrientKey,
+  supplementAmount,
   enabled = true,
 }: UseNutrientFoodSourcesOptions) {
-  const { startDate, endDate } = trendRangeBounds(range);
-
   const query = useQuery({
     queryKey: foodEntriesRangeQueryKey(startDate, endDate),
     queryFn: () => fetchFoodEntriesRange(startDate, endDate),
@@ -33,8 +36,12 @@ export function useNutrientFoodSources({
 
   const breakdown = useMemo(
     () =>
-      query.data ? computeNutrientFoodSources(query.data, nutrientKey) : null,
-    [query.data, nutrientKey]
+      query.data
+        ? computeNutrientFoodSources(query.data, nutrientKey, {
+            supplementAmount,
+          })
+        : null,
+    [query.data, nutrientKey, supplementAmount]
   );
 
   return {

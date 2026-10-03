@@ -54,7 +54,12 @@ describe('useNutrientFoodSources', () => {
     ]);
 
     const { result } = renderHook(
-      () => useNutrientFoodSources({ range: '30d', nutrientKey: 'protein' }),
+      () =>
+        useNutrientFoodSources({
+          startDate: addDays(today, -29),
+          endDate: today,
+          nutrientKey: 'protein',
+        }),
       { wrapper: createQueryWrapper(queryClient) }
     );
 
@@ -72,11 +77,45 @@ describe('useNutrientFoodSources', () => {
     ]);
   });
 
+  test('adds supplement doses to a single day', async () => {
+    mockFetchFoodEntriesRange.mockResolvedValue([
+      entry({ food_id: 'milk', food_name: 'Milk', calcium: 300 }),
+    ]);
+
+    const { result } = renderHook(
+      () =>
+        useNutrientFoodSources({
+          startDate: '2026-10-03',
+          endDate: '2026-10-03',
+          nutrientKey: 'calcium',
+          supplementAmount: 100,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => expect(result.current.breakdown).not.toBeNull());
+
+    expect(mockFetchFoodEntriesRange).toHaveBeenCalledWith(
+      '2026-10-03',
+      '2026-10-03'
+    );
+    expect(result.current.breakdown?.total).toBe(400);
+    expect(result.current.breakdown?.sources[1]).toMatchObject({
+      isSupplements: true,
+      percent: 25,
+    });
+  });
+
   test('reports an error when the range cannot be fetched', async () => {
     mockFetchFoodEntriesRange.mockRejectedValue(new Error('offline'));
 
     const { result } = renderHook(
-      () => useNutrientFoodSources({ range: '7d', nutrientKey: 'sugars' }),
+      () =>
+        useNutrientFoodSources({
+          startDate: '2026-09-01',
+          endDate: '2026-09-07',
+          nutrientKey: 'sugars',
+        }),
       { wrapper: createQueryWrapper(queryClient) }
     );
 

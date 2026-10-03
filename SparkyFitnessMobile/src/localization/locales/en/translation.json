@@ -4171,7 +4171,9 @@
       "highestDay": "Highest Intake Day",
       "targetGoal": "Target Daily Goal",
       "averageVsTarget": "Average vs. Target",
-      "percentOfGoal": "{{percent}}% of goal"
+      "percentOfGoal": "{{percent}}% of goal",
+      "dayTotal": "Total",
+      "progress": "Progress"
     },
     "foodSources": {
       "title": "Food Sources",
@@ -4181,7 +4183,10 @@
       "unnamedFood": "Unnamed food",
       "other": "Other",
       "otherCount_one": "{{count}} more food",
-      "otherCount_other": "{{count}} more foods"
+      "otherCount_other": "{{count}} more foods",
+      "subtitleDay": "Share of total {{nutrient}} on this day",
+      "emptyDay": "No logged foods contributed {{nutrient}} on this day.",
+      "supplements": "Supplements"
     }
   },
   "workoutPresetDetail": {

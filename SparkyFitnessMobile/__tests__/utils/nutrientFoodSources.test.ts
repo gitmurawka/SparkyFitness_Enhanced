@@ -1,6 +1,7 @@
 import {
   computeNutrientFoodSources,
   getEntryNutrientAmount,
+  getSupplementNutrientAmount,
 } from '../../src/utils/nutrientFoodSources';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
@@ -113,7 +114,49 @@ describe('computeNutrientFoodSources', () => {
     });
   });
 
-  it('folds foods past the limit into Other', () => {
+  it('lists foods by name until Other holds at most 10% of the total', () => {
+    // 12 foods: two big ones, then ten at 4% each. The five minimum leave
+    // 28% for Other, so it keeps listing until 8% (two foods) remain.
+    const entries = [
+      makeEntry({ food_id: 'a', food_name: 'A', protein: 30 }),
+      makeEntry({ food_id: 'b', food_name: 'B', protein: 30 }),
+      ...Array.from({ length: 10 }, (_, index) =>
+        makeEntry({
+          food_id: `small-${index}`,
+          food_name: `Small ${String(index).padStart(2, '0')}`,
+          protein: 4,
+        })
+      ),
+    ];
+
+    const result = computeNutrientFoodSources(entries, 'protein');
+
+    expect(result.sources).toHaveLength(10);
+    expect(result.other).toEqual({
+      amount: 8,
+      percent: 8,
+      foodCount: 2,
+    });
+  });
+
+  it('stops once Other sits exactly on the limit', () => {
+    const entries = ['a', 'b', 'c', 'd', 'e'].map((id, index) =>
+      makeEntry({
+        food_id: id,
+        food_name: id.toUpperCase(),
+        fat: [50, 30, 10, 5, 5][index],
+      })
+    );
+
+    const result = computeNutrientFoodSources(entries, 'fat', {
+      minSources: 2,
+    });
+
+    expect(result.sources.map((s) => s.foodName)).toEqual(['A', 'B', 'C']);
+    expect(result.other).toEqual({ amount: 10, percent: 10, foodCount: 2 });
+  });
+
+  it('honours a custom Other limit', () => {
     const entries = ['a', 'b', 'c', 'd'].map((id, index) =>
       makeEntry({
         food_id: id,
@@ -122,14 +165,13 @@ describe('computeNutrientFoodSources', () => {
       })
     );
 
-    const result = computeNutrientFoodSources(entries, 'fat', 2);
+    const result = computeNutrientFoodSources(entries, 'fat', {
+      minSources: 2,
+      maxOtherPercent: 30,
+    });
 
     expect(result.sources.map((s) => s.foodName)).toEqual(['A', 'B']);
-    expect(result.other).toEqual({
-      amount: 30,
-      percent: 30,
-      foodCount: 2,
-    });
+    expect(result.other).toEqual({ amount: 30, percent: 30, foodCount: 2 });
   });
 
   it('shows a single leftover food by name instead of an Other row', () => {
@@ -137,10 +179,31 @@ describe('computeNutrientFoodSources', () => {
       makeEntry({ food_id: id, food_name: id, carbs: 10 })
     );
 
-    const result = computeNutrientFoodSources(entries, 'carbs', 2);
+    const result = computeNutrientFoodSources(entries, 'carbs', {
+      minSources: 2,
+      maxOtherPercent: 50,
+    });
 
     expect(result.sources).toHaveLength(3);
     expect(result.other).toBeNull();
+  });
+
+  it('lists supplement doses as their own source', () => {
+    const entries = [
+      makeEntry({ food_id: 'milk', food_name: 'Milk', calcium: 300 }),
+    ];
+
+    const result = computeNutrientFoodSources(entries, 'calcium', {
+      supplementAmount: 500,
+    });
+
+    expect(result.total).toBe(800);
+    expect(result.sources[0]).toMatchObject({
+      key: 'supplements',
+      isSupplements: true,
+      amount: 500,
+    });
+    expect(result.sources[1]).toMatchObject({ foodName: 'Milk', amount: 300 });
   });
 
   it('ignores entries that contributed nothing', () => {
@@ -159,5 +222,21 @@ describe('computeNutrientFoodSources', () => {
     expect(
       computeNutrientFoodSources([makeEntry({ food_id: 'x' })], 'iron')
     ).toEqual({ total: 0, sources: [], other: null });
+  });
+});
+
+describe('getSupplementNutrientAmount', () => {
+  it('reads fixed and custom nutrients from supplement totals', () => {
+    const totals = {
+      protein: 25,
+      custom_nutrients: { Magnesium: 200 },
+    };
+    expect(getSupplementNutrientAmount(totals, 'protein')).toBe(25);
+    expect(getSupplementNutrientAmount(totals, 'Magnesium')).toBe(200);
+  });
+
+  it('treats absent totals as nothing', () => {
+    expect(getSupplementNutrientAmount(undefined, 'protein')).toBe(0);
+    expect(getSupplementNutrientAmount({}, 'Magnesium')).toBe(0);
   });
 });

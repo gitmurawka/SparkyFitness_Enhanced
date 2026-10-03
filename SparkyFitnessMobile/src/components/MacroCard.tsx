@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
   useDerivedValue,
@@ -21,6 +21,9 @@ interface MacroCardProps {
   compact?: boolean;
   /** Overrides the default 2-column `w-[48%]` container width. */
   widthClassName?: string;
+  /** Makes the card tappable (e.g. to open the nutrient's breakdown). */
+  onPress?: () => void;
+  testID?: string;
 }
 
 const MacroCard: React.FC<MacroCardProps> = ({
@@ -32,6 +35,8 @@ const MacroCard: React.FC<MacroCardProps> = ({
   unit = 'g',
   compact = false,
   widthClassName = 'w-[48%]',
+  onPress,
+  testID,
 }) => {
   const [barWidth, setBarWidth] = useState(0);
   const hasGoal = !!(goal && goal > 0);
@@ -84,8 +89,20 @@ const MacroCard: React.FC<MacroCardProps> = ({
     width: overflowWidth.value,
   }));
 
+  const Container = onPress ? Pressable : View;
+
   return (
-    <View className={`${widthClassName} p-1`}>
+    <Container
+      className={`${widthClassName} p-1`}
+      testID={testID}
+      {...(onPress
+        ? {
+            onPress,
+            accessibilityRole: 'button' as const,
+            accessibilityLabel: label,
+          }
+        : {})}
+    >
       <View className="flex-row justify-between items-center mb-2">
         <Text
           className={
@@ -166,7 +183,7 @@ const MacroCard: React.FC<MacroCardProps> = ({
           )}
         </>
       )}
-    </View>
+    </Container>
   );
 };
 

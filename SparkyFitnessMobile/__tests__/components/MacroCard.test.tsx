@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import MacroCard from '../../src/components/MacroCard';
 
 jest.mock('@react-navigation/native', () => ({
@@ -50,5 +50,18 @@ describe('MacroCard', () => {
     const { getByText } = render(<MacroCard {...baseProps} compact />);
     expect(getByText('Carbs').props.className).toContain('text-xs');
     expect(getByText('50g / 200g').props.className).toContain('text-[11px]');
+  });
+  it('is not a button without onPress', () => {
+    const { queryByRole } = render(<MacroCard {...baseProps} />);
+    expect(queryByRole('button')).toBeNull();
+  });
+
+  it('calls onPress when tapped', () => {
+    const onPress = jest.fn();
+    const { getByRole } = render(
+      <MacroCard {...baseProps} onPress={onPress} />
+    );
+    fireEvent.press(getByRole('button', { name: 'Carbs' }));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

@@ -179,6 +179,8 @@ export type RootStackParamList = {
     nutrientLabel: string;
     unit: string;
     goal?: number;
+    /** Opens on this day's food breakdown, with the trend ranges a tap away. */
+    date?: string;
   };
   ExerciseStatistics: undefined;
   CardioSession: {

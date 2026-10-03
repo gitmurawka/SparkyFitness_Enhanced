@@ -658,6 +658,19 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                         return (
                           <MacroCard
                             key={nutrientKey}
+                            testID={`dashboard-nutrient-${nutrientKey}`}
+                            onPress={() =>
+                              navigation.navigate('NutrientTrends', {
+                                nutrientKey,
+                                // The breakdown is of the nutrient as logged, so
+                                // carbs keep their own name even when the card
+                                // shows net carbs.
+                                nutrientLabel: label,
+                                unit,
+                                goal,
+                                date: summary.date,
+                              })
+                            }
                             label={displayLabel}
                             consumed={consumed}
                             goal={goal}

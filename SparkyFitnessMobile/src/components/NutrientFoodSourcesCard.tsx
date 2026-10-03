@@ -11,6 +11,8 @@ interface NutrientFoodSourcesCardProps {
   isError: boolean;
   nutrientLabel: string;
   unit: string;
+  /** Whether the shares are of one day's total or a trend range's. */
+  period?: 'day' | 'range';
 }
 
 const formatAmount = (value: number): string =>
@@ -86,6 +88,7 @@ const NutrientFoodSourcesCard: React.FC<NutrientFoodSourcesCardProps> = ({
   isError,
   nutrientLabel,
   unit,
+  period = 'range',
 }) => {
   const { t } = useTranslation();
   const [accentColor, mutedColor] = useCSSVariable([
@@ -111,11 +114,17 @@ const NutrientFoodSourcesCard: React.FC<NutrientFoodSourcesCardProps> = ({
   } else if (!breakdown || breakdown.sources.length === 0) {
     body = (
       <Text className="text-text-secondary text-sm">
-        {t('nutrientTrends.foodSources.empty', {
-          defaultValue:
-            'No logged foods contributed {{nutrient}} in this period.',
-          nutrient: nutrientLabel,
-        })}
+        {period === 'day'
+          ? t('nutrientTrends.foodSources.emptyDay', {
+              defaultValue:
+                'No logged foods contributed {{nutrient}} on this day.',
+              nutrient: nutrientLabel,
+            })
+          : t('nutrientTrends.foodSources.empty', {
+              defaultValue:
+                'No logged foods contributed {{nutrient}} in this period.',
+              nutrient: nutrientLabel,
+            })}
       </Text>
     );
   } else {
@@ -125,10 +134,14 @@ const NutrientFoodSourcesCard: React.FC<NutrientFoodSourcesCardProps> = ({
           <SourceRow
             key={source.key}
             name={
-              source.foodName ||
-              t('nutrientTrends.foodSources.unnamedFood', {
-                defaultValue: 'Unnamed food',
-              })
+              source.isSupplements
+                ? t('nutrientTrends.foodSources.supplements', {
+                    defaultValue: 'Supplements',
+                  })
+                : source.foodName ||
+                  t('nutrientTrends.foodSources.unnamedFood', {
+                    defaultValue: 'Unnamed food',
+                  })
             }
             detail={source.brandName}
             amount={source.amount}
@@ -169,10 +182,15 @@ const NutrientFoodSourcesCard: React.FC<NutrientFoodSourcesCardProps> = ({
         })}
       </Text>
       <Text className="text-text-muted text-xs mt-0.5 mb-2">
-        {t('nutrientTrends.foodSources.subtitle', {
-          defaultValue: 'Share of total {{nutrient}} in this period',
-          nutrient: nutrientLabel,
-        })}
+        {period === 'day'
+          ? t('nutrientTrends.foodSources.subtitleDay', {
+              defaultValue: 'Share of total {{nutrient}} on this day',
+              nutrient: nutrientLabel,
+            })
+          : t('nutrientTrends.foodSources.subtitle', {
+              defaultValue: 'Share of total {{nutrient}} in this period',
+              nutrient: nutrientLabel,
+            })}
       </Text>
       {body}
     </View>
