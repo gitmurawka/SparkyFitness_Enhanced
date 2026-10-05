@@ -43,7 +43,14 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
-  const { nutrientKey, nutrientLabel, unit, goal, date } = route.params;
+  const {
+    nutrientKey,
+    nutrientLabel,
+    unit,
+    goal,
+    date,
+    valueScale = 1,
+  } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -90,11 +97,33 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
     isDay && date
       ? { startDate: date, endDate: date }
       : trendRangeBounds(range);
-  const foodSources = useNutrientFoodSources({
+  const rawFoodSources = useNutrientFoodSources({
     ...bounds,
     nutrientKey,
     supplementAmount,
   });
+  // Amounts in the displayed unit (e.g. g of salt from mg of sodium); the
+  // shares are ratios and stay as they are.
+  const foodSources = useMemo(() => {
+    const { breakdown } = rawFoodSources;
+    if (!breakdown || valueScale === 1) return rawFoodSources;
+    return {
+      ...rawFoodSources,
+      breakdown: {
+        total: breakdown.total * valueScale,
+        sources: breakdown.sources.map((source) => ({
+          ...source,
+          amount: source.amount * valueScale,
+        })),
+        other: breakdown.other
+          ? {
+              ...breakdown.other,
+              amount: breakdown.other.amount * valueScale,
+            }
+          : null,
+      },
+    };
+  }, [rawFoodSources, valueScale]);
 
   // Map historical trend data to extract values for this specific nutrient
   const chartData = useMemo(() => {
@@ -104,10 +133,10 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
         typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal)) || 0;
       return {
         day: item.date,
-        value: val,
+        value: val * valueScale,
       };
     });
-  }, [data, nutrientKey]);
+  }, [data, nutrientKey, valueScale]);
 
   // Compute stats
   const stats = useMemo(() => {

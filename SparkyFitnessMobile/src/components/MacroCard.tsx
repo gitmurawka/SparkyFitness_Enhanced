@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { formatLocalizedNumber } from '../localization';
 
 interface MacroCardProps {
   label: string;
@@ -21,6 +22,8 @@ interface MacroCardProps {
   compact?: boolean;
   /** Overrides the default 2-column `w-[48%]` container width. */
   widthClassName?: string;
+  /** Decimals shown for small amounts such as grams of salt (default 0). */
+  fractionDigits?: number;
   /** Makes the card tappable (e.g. to open the nutrient's breakdown). */
   onPress?: () => void;
   testID?: string;
@@ -35,9 +38,14 @@ const MacroCard: React.FC<MacroCardProps> = ({
   unit = 'g',
   compact = false,
   widthClassName = 'w-[48%]',
+  fractionDigits = 0,
   onPress,
   testID,
 }) => {
+  const format = (value: number): string =>
+    fractionDigits > 0
+      ? formatLocalizedNumber(value, { maximumFractionDigits: fractionDigits })
+      : String(Math.round(value));
   const [barWidth, setBarWidth] = useState(0);
   const hasGoal = !!(goal && goal > 0);
   const progress = hasGoal ? consumed / (goal as number) : 0;
@@ -121,8 +129,8 @@ const MacroCard: React.FC<MacroCardProps> = ({
           }
         >
           {goal && goal > 0
-            ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
-            : `${Math.round(consumed)}${unit}`}
+            ? `${format(consumed)}${unit} / ${format(goal)}${unit}`
+            : `${format(consumed)}${unit}`}
         </Text>
       </View>
       {hasGoal && (

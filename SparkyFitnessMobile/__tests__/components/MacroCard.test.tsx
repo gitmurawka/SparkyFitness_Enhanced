@@ -64,4 +64,23 @@ describe('MacroCard', () => {
     fireEvent.press(getByRole('button', { name: 'Carbs' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+  it('rounds to whole numbers by default', () => {
+    const { getByText } = render(
+      <MacroCard {...baseProps} consumed={5.44} goal={5.75} />
+    );
+    expect(getByText('5g / 6g')).toBeTruthy();
+  });
+
+  it('shows decimals when fractionDigits is set', () => {
+    const { getByText } = render(
+      <MacroCard
+        {...baseProps}
+        label="Salt"
+        consumed={5.44}
+        goal={5.75}
+        fractionDigits={1}
+      />
+    );
+    expect(getByText('5.4g / 5.8g')).toBeTruthy();
+  });
 });

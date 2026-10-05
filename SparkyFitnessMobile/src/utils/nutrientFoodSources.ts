@@ -88,6 +88,24 @@ export function getSupplementNutrientAmount(
   return toNumber(value);
 }
 
+/**
+ * A day's total of one nutrient: its food entries plus logged supplement
+ * doses, the way Nutrition Details totals nutrients the summary does not roll
+ * up itself.
+ */
+export function getDayNutrientTotal(
+  entries: FoodEntry[],
+  supplementTotals: Partial<SupplementTotals> | null | undefined,
+  nutrientKey: string
+): number {
+  return (
+    entries.reduce(
+      (sum, entry) => sum + getEntryNutrientAmount(entry, nutrientKey),
+      0
+    ) + getSupplementNutrientAmount(supplementTotals, nutrientKey)
+  );
+}
+
 const sourceKey = (entry: FoodEntry): string => {
   if (entry.food_id) return `food:${entry.food_id}`;
   // Library deletes null out food_id but keep the snapshot name, so fall back

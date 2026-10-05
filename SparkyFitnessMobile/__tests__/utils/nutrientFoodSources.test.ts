@@ -1,6 +1,7 @@
 import {
   computeNutrientFoodSources,
   getEntryNutrientAmount,
+  getDayNutrientTotal,
   getSupplementNutrientAmount,
 } from '../../src/utils/nutrientFoodSources';
 import type { FoodEntry } from '../../src/types/foodEntries';
@@ -238,5 +239,20 @@ describe('getSupplementNutrientAmount', () => {
   it('treats absent totals as nothing', () => {
     expect(getSupplementNutrientAmount(undefined, 'protein')).toBe(0);
     expect(getSupplementNutrientAmount({}, 'Magnesium')).toBe(0);
+  });
+});
+
+describe('getDayNutrientTotal', () => {
+  it('adds supplement doses to the food entries', () => {
+    const entries = [
+      makeEntry({ sodium: 400, quantity: 200, serving_size: 100 }),
+      makeEntry({ sodium: 100 }),
+    ];
+    expect(getDayNutrientTotal(entries, { sodium: 50 }, 'sodium')).toBe(950);
+  });
+
+  it('counts food alone when no supplements were logged', () => {
+    const entries = [makeEntry({ sugars: 12 })];
+    expect(getDayNutrientTotal(entries, undefined, 'sugars')).toBe(12);
   });
 });

@@ -43,7 +43,12 @@ import MedicationsCard from '../components/MedicationsCard';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
-import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
+import {
+  NUTRIENT_META,
+  SALT_GRAMS_PER_SODIUM_MG,
+  getNutrientLabel,
+} from '../constants/nutrients';
+import { getDayNutrientTotal } from '../utils/nutrientFoodSources';
 import {
   caffeineActiveRootQueryKey,
   fastingRootQueryKey,
@@ -553,10 +558,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 const customNutrientNames = new Set(
                   customNutrients.map((cn) => cn.name)
                 );
-                const dashboardNutrients = summaryNutrients.filter(
-                  (key) => CORE_MACROS.has(key) || customNutrientNames.has(key)
-                );
-                if (dashboardNutrients.length === 0) return null;
+                // Sugars and salt always follow the chosen nutrients. Salt is
+                // not tracked itself: it is derived from sodium (mg → g salt).
+                const dashboardNutrients = [
+                  ...summaryNutrients.filter(
+                    (key) =>
+                      CORE_MACROS.has(key) || customNutrientNames.has(key)
+                  ),
+                  'sugars',
+                  'salt',
+                ];
+                const dayTotal = (key: 'sugars' | 'sodium'): number =>
+                  getDayNutrientTotal(
+                    summary.foodEntries,
+                    summary.supplementTotals,
+                    key
+                  );
                 return (
                   <View
                     key="macros"
@@ -595,10 +612,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                               (cn) => cn.name === nutrientKey
                             )
                           : undefined;
-                        const label = meta
-                          ? getNutrientLabel(t, nutrientKey)
-                          : (customDef?.name ?? nutrientKey);
-                        const unit = meta?.unit ?? customDef?.unit ?? 'g';
+                        const isSalt = nutrientKey === 'salt';
+                        const label =
+                          meta || isSalt
+                            ? getNutrientLabel(t, nutrientKey)
+                            : (customDef?.name ?? nutrientKey);
+                        const unit = isSalt
+                          ? 'g'
+                          : (meta?.unit ?? customDef?.unit ?? 'g');
 
                         // Use theme-aware CSS variable colors for the 4 core macros;
                         // custom nutrients fall back to the app accent color.
@@ -625,6 +646,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                           consumed = summary.fat.consumed;
                         } else if (nutrientKey === 'dietary_fiber') {
                           consumed = summary.fiber.consumed;
+                        } else if (nutrientKey === 'sugars') {
+                          consumed = dayTotal('sugars');
+                        } else if (isSalt) {
+                          consumed =
+                            dayTotal('sodium') * SALT_GRAMS_PER_SODIUM_MG;
                         } else {
                           consumed =
                             summary.customNutrientTotals[nutrientKey] ?? 0;
@@ -643,6 +669,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                           goal = summary.fat.goal || undefined;
                         else if (nutrientKey === 'dietary_fiber')
                           goal = summary.fiber.goal || undefined;
+                        else if (nutrientKey === 'sugars')
+                          goal = summary.goals.sugars || undefined;
+                        else if (isSalt)
+                          goal = summary.goals.sodium
+                            ? summary.goals.sodium * SALT_GRAMS_PER_SODIUM_MG
+                            : undefined;
                         else
                           goal =
                             summary.customNutrientGoals[nutrientKey] ||
@@ -661,7 +693,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                             testID={`dashboard-nutrient-${nutrientKey}`}
                             onPress={() =>
                               navigation.navigate('NutrientTrends', {
-                                nutrientKey,
+                                // Salt has no column of its own: its page reads
+                                // sodium and shows it converted to grams of salt.
+                                nutrientKey: isSalt ? 'sodium' : nutrientKey,
                                 // The breakdown is of the nutrient as logged, so
                                 // carbs keep their own name even when the card
                                 // shows net carbs.
@@ -669,6 +703,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                                 unit,
                                 goal,
                                 date: summary.date,
+                                ...(isSalt
+                                  ? { valueScale: SALT_GRAMS_PER_SODIUM_MG }
+                                  : {}),
                               })
                             }
                             label={displayLabel}
@@ -677,6 +714,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                             color={color}
                             overfillColor={progressTrackOverfillColor}
                             unit={unit}
+                            fractionDigits={isSalt ? 1 : 0}
                           />
                         );
                       })}

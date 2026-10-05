@@ -181,6 +181,12 @@ export type RootStackParamList = {
     goal?: number;
     /** Opens on this day's food breakdown, with the trend ranges a tap away. */
     date?: string;
+    /**
+     * Multiplies every amount shown, for a nutrient displayed in another unit
+     * than it is stored in (salt in g, read from sodium in mg). Shares are
+     * unaffected. `goal` is already in the displayed unit.
+     */
+    valueScale?: number;
   };
   ExerciseStatistics: undefined;
   CardioSession: {

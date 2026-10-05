@@ -104,6 +104,9 @@ export const NUTRIENT_META: Record<string, NutrientMeta> = {
   },
 };
 
+/** Grams of salt per milligram of sodium (salt ≈ sodium × 2.5). */
+export const SALT_GRAMS_PER_SODIUM_MG = 2.5 / 1000;
+
 /**
  * Nutrients shown in the Dashboard summary by default (when no user preference
  * is configured). Matches the server-side defaultNutrients list, minus 'calories'
@@ -151,6 +154,8 @@ export function getNutrientLabel(
       return t('nutrients.potassium', { defaultValue: 'Potassium' });
     case 'sugars':
       return t('nutrients.sugars', { defaultValue: 'Sugars' });
+    case 'salt':
+      return t('nutrients.salt', { defaultValue: 'Salt' });
     case 'vitamin_a':
       return t('nutrients.vitaminA', { defaultValue: 'Vitamin A' });
     case 'vitamin_c':

@@ -264,3 +264,58 @@ describe('NutrientTrendsScreen day view', () => {
     });
   });
 });
+
+describe('NutrientTrendsScreen value scale', () => {
+  const saltRoute = {
+    key: 'NutrientTrends-3',
+    name: 'NutrientTrends',
+    params: {
+      nutrientKey: 'sodium',
+      nutrientLabel: 'Salt',
+      unit: 'g',
+      valueScale: 0.0025,
+    },
+  } as unknown as ScreenProps['route'];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseDailySummary.mockReturnValue({
+      summary: undefined,
+    } as unknown as ReturnType<typeof useDailySummary>);
+    mockUseNutritionTrends.mockReturnValue({
+      data: [
+        { date: '2026-10-01', sodium: 2000 },
+        { date: '2026-10-02', sodium: 2000 },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useNutritionTrends>);
+    mockUseNutrientFoodSources.mockReturnValue({
+      breakdown: {
+        total: 4000,
+        sources: [
+          { key: 'food:ham', foodName: 'Ham', amount: 2800, percent: 70 },
+          { key: 'food:bread', foodName: 'Bread', amount: 1200, percent: 30 },
+        ],
+        other: null,
+      },
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it('shows sodium converted to grams of salt, shares unchanged', () => {
+    renderScreen(saltRoute);
+
+    expect(mockUseNutrientFoodSources).toHaveBeenLastCalledWith(
+      expect.objectContaining({ nutrientKey: 'sodium' })
+    );
+    // 2000 mg sodium a day = 5 g salt (daily average and highest day).
+    expect(screen.getAllByText('5 g')).toHaveLength(2);
+    expect(screen.getByText('7 g')).toBeTruthy();
+    expect(screen.getByText('70%')).toBeTruthy();
+    expect(screen.getByText('3 g')).toBeTruthy();
+    expect(screen.getByText('30%')).toBeTruthy();
+  });
+});
